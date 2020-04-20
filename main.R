@@ -1,3 +1,19 @@
+library(scales)
+library(kableExtra)
+library(webshot)
+library(magick)
+library(xtable)
+library(gridExtra)
+library(ggplot2)
+library(tidyverse)
+library(hrbrthemes)
+library(viridis)
+library(ggpubr)
+library(apcluster)
+library(reshape2)
+
+
+
 getData <- function(item , group)
 {
     library(dplyr)
@@ -30,13 +46,14 @@ getCountryValues = function(data , Name)
 
 plot_Data = function(DATA , CountryName)
 {
+    
     xValues = names(DATA)
     xValues = xValues[xValues!= "Country"]
     yValues = getCountryValues(DATA , CountryName )
+    xValues = as.Date(as.numeric(xValues), origin = '1970-1-1')
+    data= data.frame(Date = xValues , Cases = yValues)
     
-    data= data.frame(xAxis = xValues , yAxis = yValues)
-    
-        p = ggplot(data ,  aes(x=as.Date(as.numeric(xAxis), origin = '1970-1-1'), y=yAxis , group = 1)) +
+        p = ggplot(data ,  aes(x= Date, y=Cases , group = 1)) +
         geom_line(color ='#ffbc2d' ) +
         geom_point(color = ft_cols$yellow , size = 2) +
         labs(x="Date", y="Number of Cases",
@@ -45,7 +62,7 @@ plot_Data = function(DATA , CountryName)
              caption="Brought to you by :Tarek") + 
         theme_ft_rc()  + 
         theme(axis.text.x = element_text(angle = 90, hjust = 2 , size = 10) )   
-        
+    
         p 
 }
 
@@ -60,31 +77,27 @@ bar = function(data)
 }
 
 
-multiLine = function(data)
+multiLine = function(data , names )
 {
+    #data = data %>% filter(Country %in% names)
     
-    data = data %>% filter(Country %in% c('Algeria' , 'Tunisia' , 'Morocco' , 'Libya' , 'Egypt') )
-    print(names(data)[2:ncol(data)])
-    df = data.frame( Date = as.Date (as.numeric(names(data)[2:ncol(data)] ),
-                    origin = '1970-1-1') ,
-                    "Algeria" = getCountryValues(data , 'Algeria') , 
-                    "Tunisia" = getCountryValues(data , 'Tunisia') , 
-                    "Morocco" = getCountryValues(data , 'Morocco') , 
-                    "Libya" = getCountryValues(data , 'Libya'), 
-                    "Egypt" = getCountryValues(data , 'Egypt') )
-
-    p = ggplot(df  )  +
-            geom_line( aes(x=Date, y=Algeria , color = "Algeria" ))   +
-            geom_line(aes(x=Date, y=Egypt , color = "Egypt") ) +
-            geom_line(aes(x=Date, y=Libya , color = "Libya" ))+
-            geom_line(aes(x=Date, y=Tunisia , color = "Tunisia" ))+
-            geom_line(aes(x=Date, y=Morocco , color = "Morocco" ))+
-            ggtitle("Compare Evolution of COVID19 in Egypt with North Afica Countries") +
+    df = data.frame( 'Date' = as.Date(as.numeric(names(data)[2:ncol(data)] )  , 
+                                       origin = '1970-1-1') 
+                      ) 
+    for(i in names )
+    {
+        df[ , i] = as.numeric(as.vector(data[data$Country == i ,2:ncol(data) ]))
+    }
+    point <- format_format(big.mark = " ", decimal.mark = ",", scientific = FALSE)
+    df = melt(df , id.vars = 'Date' , variable.name = 'series')
+    #view(df) 
+    ggplot(df , aes(x = Date , y = value , group = series , color = series) )  +
+        geom_line( )+
+            ggtitle("Compare Evolution of COVID19 in Egypt, China, Italy, Iran ans USA") +
             theme_ft_rc()   +
             ylab("Number of Cases") +
-            scale_x_date(date_labels = "%b %d")
-    p 
-        
+            scale_y_sqrt (labels = point)+
+            scale_x_date(date_labels = "%b %d") 
 }
 
 
@@ -193,17 +206,8 @@ getCorrelation = function(data , case )
     p
 }
 
-library(kableExtra)
-library(webshot)
-library(magick)
-library(xtable)
-library(gridExtra)
-library(ggplot2)
-library(tidyverse)
-library(hrbrthemes)
-library(viridis)
-library(ggpubr)
-library(apcluster)
+
+
 
 TotalCases = getData("confirmed")
 TotalDeaths= getData("deaths")
@@ -226,41 +230,48 @@ data = data.frame('Country' = TotalCases$Country , 'Total Cases' = TotalCases[,n
 #write.csv(data, 'data/All.csv',row.names = FALSE)
 
 
-# ----------------------------------------------------------------------
-
-
-#plotData = data.frame( xAxis = as.Date( as.numeric(xValues) , origin  ='1970-1-1') , yAxis = yValues) 
-#plot_Data(TotalCases , "Egypt")
-
-
-# ----------------------------------------------------------------------
-
-#plotData = data.frame(x = data$Country , y = data$Total.Cases)  
-#bar(plotData)
-
-# ----------------------------------------------------------------------
-
-
-#multiLine(TotalCases)
-
-# ----------------------------------------------------------------------
-
-
-#plotBox(data)
-
-# ----------------------------------------------------------------------
+# ---------------------------plot Egypt progress ---------------------------------
+plot_Data(TotalCases , "Egypt")
 
 
 
-#getSimilarity(data)
 
 
 # ----------------------------------------------------------------------
 
+plotData = data.frame(x = data$Country , y = data$Total.Cases)  
+bar(plotData)
 
 
-#getSkewness(data , 3)
 
-#-------------------------------------------------------------------------
+# -------------------------- Drawing  BocPlot  ---------------------------
 
-#getCorrelation(data , 1)
+plotBox(data)
+
+
+
+
+
+# -------------------------- Finding Similarity ---------------------------
+
+getSimilarity(data)
+
+
+
+
+#-------------------------- Finding Density ---------------------------
+getSkewness(data , 3)
+
+
+
+
+
+#--------------------------Findding Correlation -------------------------------
+getCorrelation(data , 1)
+
+
+
+
+# -------------------------- PLot Egypt, Italy, Us, Iran and China progress  ---------------------------
+
+multiLine(TotalCases , c('Egypt' , 'Italy', 'US' , 'Iran' , 'China' ))
