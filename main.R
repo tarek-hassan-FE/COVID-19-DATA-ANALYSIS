@@ -11,8 +11,8 @@ library(viridis)
 library(ggpubr)
 library(apcluster)
 library(reshape2)
-
-
+library(minpack.lm)
+library(plotly)
 
 getData <- function(item , group)
 {
@@ -209,9 +209,77 @@ getCorrelation = function(data , case )
 
 
 
+model = function(data , countryName)
+{
+    
+    #This is a function to make an exponential prediction growth about a country 
+    #Formula =  alpha *exp(beta*t) + theta 
+    
+    
+    #Filter the data by the wanted counrt name
+    data = data %>% filter(Country == countryName )
+    
+    #Saving Dates in a new dataframe as dates instead of number of days since 1970-1-1 as column 1
+    # Saving Cases of the wanted country as column 2 
+    df_t = data.frame('Date' = as.numeric(names(data)[2:ncol(data)] ) - 18283  , 
+            'Cases' = as.numeric(as.vector(data[1,2:ncol(data)]) ) 
+            )
+    
+    
+    #Filter the days which number of cases was less than 1 to better fit the model 
+    df_t = df_t %>% filter(Cases > 1 )
+    
+    # Assigning theta to half of the minimum value in Dates
+    c.0 =   min(df_t$Date)* 0.5
+    
+    #Fitting a model to find the optimum value of theta 
+    model.0 <- lm(log(Cases - c.0) ~ Date, data=df_t)
+    
+    # Finding optimum of alpha, beta and theta 
+    start <- list(a=exp(coef(model.0)[1]), b=coef(model.0)[2], c=c.0)
+    model = nls(formula = Cases ~ a * exp(b * Date) + c , data = df_t,  start = start)
+    
+    # Storing alpha, beta and theta 
+    t = coef(model)
+    
+
+    # Storing dates and original cases 
+    dt1 = data.frame(Date = as.Date(as.numeric(df_t$Date) , origin = '2020-1-22') , 
+                      Cases = df_t$Cases
+                      )
+    #Storing old dates and adding 3 days 
+    x = df_t$Date
+    x = c(x , max(x) +1)
+    x = c(x , max(x) +1)
+    x = c(x , max(x) +1)
+    
+    # growth curve by Formula ( alpha * exp(beta* Date) + theta )
+    p = t["a"] * (exp(t["b"] * x)) + t["c"]
+    
+    #Filter negative values out 
+    p[p<0] = 0
+    
+    
+    #Storing dates and cases of the prediction curve  
+    dt2 = data.frame(Date = as.Date(x , origin = '2020-1-22') ,
+                     Cases = round(p)  )
+    
+    #plotting the two curves 
+    pl = ggplot(NULL) +
+        geom_line(data = dt1 , aes( x = Date , y = Cases  , color = "Actual Cases")) +
+        geom_line(data = dt2  ,aes(  x = Date , y = Cases , color = "Predicted Cases")) +
+        theme_ft_rc() +
+        labs(x = "Date", y = "Cases")+
+        ggtitle("Prediction of COVID19 Cases in EGYPT ")
+    ggplotly(pl  , tooltip = c( "x" ,"y") ) 
+}
+
+
+# getting data from url 
 TotalCases = getData("confirmed")
 TotalDeaths= getData("deaths")
 Totalrecoverd = getData("recovered")
+
 
 #Making a table contains all the three categories 
 data = data.frame('Country' = TotalCases$Country , 'Total Cases' = TotalCases[,ncol(TotalCases)], 
@@ -219,59 +287,42 @@ data = data.frame('Country' = TotalCases$Country , 'Total Cases' = TotalCases[,n
                   'Active Casses' = TotalCases[,ncol(TotalCases)] - (TotalDeaths[,ncol(TotalDeaths)] +
                                                                          Totalrecoverd[,ncol(Totalrecoverd)])
 )
-#TotalCases = read.csv('data/TotalCases.csv')
-#TotalDeaths = read.csv('data/TotalDeaths.csv')
-#Totalrecoverd = read.csv('data/TotalRecovered.csv')
+
+#Writind data on files 
+write.csv(TotalCases, 'data/TotalCases.csv',row.names = FALSE)
+write.csv(TotalDeaths, 'data/TotalDeaths.csv',row.names = FALSE)
+write.csv(Totalrecoverd, 'data/TotalRecovered.csv',row.names = FALSE)
+write.csv(data, 'data/All.csv',row.names = FALSE)
 
 
-#write.csv(TotalCases, 'data/TotalCases.csv',row.names = FALSE)
-#write.csv(TotalDeaths, 'data/TotalDeaths.csv',row.names = FALSE)
-#write.csv(Totalrecoverd, 'data/TotalRecovered.csv',row.names = FALSE)
-#write.csv(data, 'data/All.csv',row.names = FALSE)
+
+
+# ------------------------------------- Prediction ---------------------------------------------
+model(TotalCases , 'Egypt')
 
 
 # ---------------------------plot Egypt progress ---------------------------------
 plot_Data(TotalCases , "Egypt")
 
 
-
-
-
-# ----------------------------------------------------------------------
-
-plotData = data.frame(x = data$Country , y = data$Total.Cases)  
-bar(plotData)
-
-
-
 # -------------------------- Drawing  BocPlot  ---------------------------
-
 plotBox(data)
 
 
-
-
-
-# -------------------------- Finding Similarity ---------------------------
-
+#-------------------------- Finding Similarity ---------------------------
 getSimilarity(data)
-
-
 
 
 #-------------------------- Finding Density ---------------------------
 getSkewness(data , 3)
 
 
-
-
-
 #--------------------------Findding Correlation -------------------------------
 getCorrelation(data , 1)
 
 
-
-
-# -------------------------- PLot Egypt, Italy, Us, Iran and China progress  ---------------------------
-
+#-------------------------- PLot Egypt, Italy, Us, Iran and China progress  ---------------------------
 multiLine(TotalCases , c('Egypt' , 'Italy', 'US' , 'Iran' , 'China' ))
+
+
+
