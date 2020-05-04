@@ -1,18 +1,19 @@
 library(scales)
 library(kableExtra)
 library(webshot)
-library(magick)
 library(xtable)
 library(gridExtra)
 library(ggplot2)
 library(tidyverse)
 library(hrbrthemes)
 library(viridis)
-library(ggpubr)
 library(apcluster)
 library(reshape2)
 library(minpack.lm)
 library(plotly)
+
+options(scipen = 999)
+
 
 getData <- function(item , group)
 {
@@ -53,26 +54,29 @@ plot_Data = function(DATA , CountryName)
     xValues = as.Date(as.numeric(xValues), origin = '1970-1-1')
     data= data.frame(Date = xValues , Cases = yValues)
     
-        p = ggplot(data ,  aes(x= Date, y=Cases , group = 1)) +
+    p = ggplot(data ,  aes(x= Date, y=Cases , group = 1)) +
         geom_line(color ='#ffbc2d' ) +
         geom_point(color = ft_cols$yellow , size = 2) +
         labs(x="Date", y="Number of Cases",
              title=paste("Evolution of COVID19 in " , CountryName),
              subtitle="A plot that is only useful for demonstration purposes",
              caption="Brought to you by :Tarek") + 
-        theme_ft_rc()  + 
-        theme(axis.text.x = element_text(angle = 90, hjust = 2 , size = 10) )   
+        theme_ft_rc()  
     
+    #png("images/Egypt Progress.png" , width = 1366 , height = 768 , units = "px")
         p 
+    #dev.off()
 }
 
 bar = function(data)
 {
     data = data %>% filter(x %in% c('Algeria' , 'Tunisia' , 'Morocco' , 'Libya' , 'Egypt') )
+    #png("images/bar.png" , width = 1366 , height = 768 , units = "px")
     ggplot(data, aes(x= x , y = y )) +
         geom_bar(color= ft_cols$yellow, fill=ft_cols$yellow , width = 0.2 , stat = "identity" )  +
         theme_ft_rc() + 
         theme(axis.text.x = element_text(angle = 90, hjust = 1 , size = 10) )
+    #dev.off()
     
 }
 
@@ -91,6 +95,7 @@ multiLine = function(data , names )
     point <- format_format(big.mark = " ", decimal.mark = ",", scientific = FALSE)
     df = melt(df , id.vars = 'Date' , variable.name = 'series')
     #view(df) 
+    #png("images/Compare.png" , width = 1366 , height = 768 , units = "px")
     ggplot(df , aes(x = Date , y = value , group = series , color = series) )  +
         geom_line( )+
             ggtitle("Compare Evolution of COVID19 in Egypt, China, Italy, Iran ans USA") +
@@ -98,6 +103,7 @@ multiLine = function(data , names )
             ylab("Number of Cases") +
             scale_y_sqrt (labels = point)+
             scale_x_date(date_labels = "%b %d") 
+    #dev.off()
 }
 
 
@@ -108,7 +114,7 @@ plotBox = function (data)
         name = c('Total Cases' , 'Total Deaths' , 'Total Recovered'  ,'Active Cases'),
         value = c(data$Total.Cases , data$Total.Deaths , data$Total.Recovered , data$Active.Casses)
     )
-    
+    #png("images/BoxPlot.png" , width = 1366 , height = 768 , units = "px")
     df %>%
         ggplot( aes(x=name, y=value, color =name)) +
         geom_boxplot() +
@@ -122,6 +128,7 @@ plotBox = function (data)
         ylab("Number of Cases")+
         xlab("")+
         ylim(1000 , 100000)
+    #dev.off()
 }
 
 
@@ -137,8 +144,11 @@ getSimilarity = function(data)
                     "Tunisia" = as.numeric(p[ ,5]) 
                     )
     
-    p = negDistMat(data, r = 1)
-    #p = linSimMat(data, sel=c(1:5), w=1, method="euclidean", p=1)
+    p = negDistMat(data, r = 1) 
+    #png("images/Pearson Similarity.png" , width = 1366 , height = 768 , units = "px")
+    p
+    #dev.off()
+    
     df = data.frame(Countrey = c('Algeria' , 'Egypt' , 'Libya' , 'Morocco' , 'Tunisia') ,
                     "Algeria" = as.numeric(p[ ,1 ]) /10000000,
                     "Egypt" = as.numeric(p[,2 ]) /10000000,
@@ -146,10 +156,12 @@ getSimilarity = function(data)
                     "Morocco" = as.numeric(p[ ,4]) /10000000,
                     "Tunisia" = as.numeric(p[ ,5])/10000000 
     )
-    view(df)
+    
     p = kable(df, "html") %>%
         kable_styling("striped")
+    #png("images/Euclidean Similarity.png" , width = 1366 , height = 768 , units = "px")
     p
+    #dev.off()
     
 }
 
@@ -165,8 +177,10 @@ getSkewness = function(data , case )
             theme_ft_rc()  +
             scale_x_sqrt() +
             scale_y_continuous(labels = scales::percent) +
-            xlab("Number of Deaths") 
-        
+            xlab("Number of Deaths")
+        #png("images/Deaths Density.png" , width = 1366 , height = 768 , units = "px")
+        p
+        #dev.off()
     }
     
     else if(case ==2 )
@@ -178,7 +192,9 @@ getSkewness = function(data , case )
             scale_x_sqrt()+
             scale_y_continuous(labels = scales::percent) +
             xlab("Number of Confirmed Cases") 
-        
+        #png("images/Confirmed Cases Density.png" , width = 1366 , height = 768 , units = "px")
+        p
+        #dev.off()
     }
     else
     {
@@ -189,10 +205,12 @@ getSkewness = function(data , case )
             scale_x_sqrt()+
             scale_y_continuous(labels = scales::percent) +
             xlab("Number of Recovered Cases") 
-        
+        #png("images/Recoverd Cases Density.png" , width = 1366 , height = 768 , units = "px")
+        p   
+        #dev.off()
     }
     
-    p
+    
 }
 
 
@@ -203,7 +221,9 @@ getCorrelation = function(data , case )
     cor = round(cor(df) , 2)
     p = kable(cor, "html") %>%
         kable_styling("striped")
-    p
+    #png("images/Corrolation.png" , width = 1366 , height = 768 , units = "px")
+    p   
+    #dev.off()
 }
 
 
@@ -249,9 +269,11 @@ model = function(data , countryName)
                       )
     #Storing old dates and adding 3 days 
     x = df_t$Date
-    x = c(x , max(x) +1)
-    x = c(x , max(x) +1)
-    x = c(x , max(x) +1)
+    for( i  in max(x):123)
+    {
+        x = c(x , max(x) +1)
+    }
+
     
     # growth curve by Formula ( alpha * exp(beta* Date) + theta )
     p = t["a"] * (exp(t["b"] * x)) + t["c"]
@@ -265,13 +287,16 @@ model = function(data , countryName)
                      Cases = round(p)  )
     
     #plotting the two curves 
-    pl = ggplot(NULL) +
-        geom_line(data = dt1 , aes( x = Date , y = Cases  , color = "Actual Cases")) +
-        geom_line(data = dt2  ,aes(  x = Date , y = Cases , color = "Predicted Cases")) +
+    #png(filename = "test.png"  , width = 1366 , height = 768 , units = "px" )
+    ggplot(NULL) +
+        geom_line(data = dt2  ,aes(  x = Date , y = Cases , color = "Predicted Cases") , size = 1) +
+        geom_line(data = dt1 , aes( x = Date , y = Cases  , color = "Actual Cases") , size = 1) +
         theme_ft_rc() +
         labs(x = "Date", y = "Cases")+
-        ggtitle("Prediction of COVID19 Cases in EGYPT ")
-    ggplotly(pl  , tooltip = c( "x" ,"y") ) 
+        ggtitle("Prediction of COVID19 Cases in EGYPT 25/5")
+    #dev.off()
+    
+    #ggplotly(pl  , tooltip = c( "x" ,"y") ) 
 }
 
 
@@ -289,10 +314,10 @@ data = data.frame('Country' = TotalCases$Country , 'Total Cases' = TotalCases[,n
 )
 
 #Writind data on files 
-write.csv(TotalCases, 'data/TotalCases.csv',row.names = FALSE)
-write.csv(TotalDeaths, 'data/TotalDeaths.csv',row.names = FALSE)
-write.csv(Totalrecoverd, 'data/TotalRecovered.csv',row.names = FALSE)
-write.csv(data, 'data/All.csv',row.names = FALSE)
+write.csv(TotalCases, 'Data/TotalCases.csv',row.names = FALSE)
+write.csv(TotalDeaths, 'Data/TotalDeaths.csv',row.names = FALSE)
+write.csv(Totalrecoverd, 'Data/TotalRecovered.csv',row.names = FALSE)
+write.csv(data, 'Data/All.csv',row.names = FALSE)
 
 
 
@@ -314,6 +339,8 @@ getSimilarity(data)
 
 
 #-------------------------- Finding Density ---------------------------
+getSkewness(data , 1)
+getSkewness(data , 2)
 getSkewness(data , 3)
 
 

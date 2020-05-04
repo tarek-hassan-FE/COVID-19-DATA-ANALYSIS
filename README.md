@@ -3,7 +3,7 @@
 
 
 
-### Prediction of Cases number in Egypt in three days ahead  
+* Prediction of Cases number in Egypt in three days ahead  
 ![](https://github.com/Dodger23/COVID-19-DATA-ANALYSIS/blob/master/images/Prediction%20of%20Egypt.png)
 
 
